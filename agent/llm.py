@@ -35,7 +35,6 @@ def _parse_json(raw: str) -> dict:
 def _extract_candidates(raw: str) -> list[str]:
     """Return a priority-ordered list of plausible JSON sub-strings from *raw*."""
     raw = raw.strip()
-    # Strip fenced code blocks first
     if raw.startswith("```"):
         parts = raw.split("\n", 1)
         raw = parts[1].lstrip() if len(parts) > 1 else ""
@@ -43,10 +42,8 @@ def _extract_candidates(raw: str) -> list[str]:
             raw = raw[: raw.rfind("```")].rstrip()
 
     candidates: list[str] = []
-    # Full text that starts with '{'
     if raw.startswith("{"):
         candidates.append(raw)
-    # One JSON object per line
     for line in raw.splitlines():
         line = line.strip()
         if line.startswith("{"):
@@ -85,6 +82,8 @@ def _call_ollama(messages: list[dict]) -> dict:
     return _parse_json(resp.json()["message"]["content"])
 
 
+_DEFAULT_WORDLIST = "/usr/share/wordlists/dirb/common.txt"
+
 _TARGET_RE = re.compile(r"^TARGET=(.+)$", re.IGNORECASE)
 
 
@@ -100,35 +99,50 @@ def _extract_target(messages: list[dict]) -> str:
     return ""
 
 
-def _mock_call(messages: list[dict]) -> dict:
-    target = _extract_target(messages)
-
-    last_tool = "none"
+def _get_last_tool(messages: list[dict]) -> str:
+    """Return the tool name from the last assistant message, or '_init'."""
     for m in reversed(messages):
         if m.get("role") == "assistant":
             try:
                 prev = json.loads(m.get("content", "{}"))
-                last_tool = prev.get("tool", "none")
+                return prev.get("tool", "_init")
             except Exception:
-                pass
-            break
+                return "_init"
+    return "_init"
+
+
+def _mock_call(messages: list[dict]) -> dict:
+    target = _extract_target(messages)
+    last_tool = _get_last_tool(messages)
+
+    # The LLM decision messages are role "assistant" with JSON content.
+    # Memory tool-result entries are role "tool" — skip those by checking
+    # content starts with '{'.
+    if last_tool == "_init":
+        # Very first call — start the chain
+        return {"tool": "enum",
+                "args": {"target": target},
+                "reason": "Starting reconnaissance with lightweight enum."}
 
     if last_tool == "none":
-        return {"tool": "none", "args": {}, "reason": "All steps completed."}
+        return {"tool": "none", "args": {},
+                "reason": "All steps completed."}
 
-    # Will be updated when gobuster is added to sequence
     _sequence: dict[str, str] = {
-        "enum": "nmap",
-        "nmap": "gobuster",
-        "gobuster": "whois",
-        "whois": "none",
+        "enum":    "nmap",
+        "nmap":    "gobuster",
+        "gobuster":"whois",
+        "whois":   "none",
     }
     next_tool = _sequence.get(last_tool, "none")
-    return {
-        "tool": next_tool,
-        "args": {"target": target},
-        "reason": f"Next step after {last_tool}.",
-    }
+
+    args: dict = {"target": target}
+    if next_tool == "gobuster":
+        args["mode"] = "dir"
+        args["wordlist"] = _DEFAULT_WORDLIST
+
+    return {"tool": next_tool, "args": args,
+            "reason": f"Next step after {last_tool}."}
 
 
 def get_next_step(messages: list[dict]) -> dict:

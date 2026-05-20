@@ -140,7 +140,7 @@ def run(target: str, dry_run: bool = False) -> dict:
             print("[DONE] LLM signalled completion.")
             json_events.append({
                 "ts": ts, "step": step,
-                "role": "system", "content": "stoppped by LLM", "status": "done",
+                "role": "system", "content": "stopped by LLM", "status": "done",
             })
             break
 

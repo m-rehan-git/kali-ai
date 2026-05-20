@@ -1,8 +1,14 @@
 """tests/test_config.py — Unit tests for config.py security helpers."""
 
+import sys
+from pathlib import Path
+
+# Project root is two levels above this file (tests/ is at root/tests/)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import pytest
 
-from kali_ai_agent.config import (
+from config import (      # noqa: E402
     is_safe_arg,
     _IPV4_RE,
     _DOMAIN_RE,
@@ -18,8 +24,7 @@ from kali_ai_agent.config import (
     ("10.0.0.1",        True),
     ("scanme.nmap.org", True),
     ("target-host",     True),
-    ("",               True),   # empty is safe (caller checks emptiness)
-    # Not used in tools list
+    ("",               True),
 ])
 def test_is_safe_arg_clean(val, expected):
     assert is_safe_arg(val) == expected
@@ -77,27 +82,27 @@ def test_domain_re_valid(domain):
 # ── _is_special_ip ─────────────────────────────────────────────────
 
 @pytest.mark.parametrize("ip,expected", [
-    ("127.0.0.1",    True),
-    ("10.0.0.1",     True),
-    ("172.16.0.1",   True),
-    ("192.168.1.1",  True),
-    ("169.254.1.1",  True),
-    ("0.0.0.0",      True),
-    ("8.8.8.8",      False),
-    ("1.1.1.1",      False),
+    ("127.0.0.1",       True),
+    ("10.0.0.1",        True),
+    ("172.16.0.1",      True),
+    ("192.168.1.1",     True),
+    ("169.254.1.1",     True),
+    ("0.0.0.0",         True),
+    ("8.8.8.8",         False),
+    ("1.1.1.1",         False),
     ("208.67.222.222", False),
 ])
 def test_is_special_ip(ip, expected):
     assert _is_special_ip(ip) == expected
 
 
-# ── validate_target integration ─────────────────────────────────────
+# ── validate_target ─────────────────────────────────────────────────
 
 @pytest.mark.parametrize("raw,expected", [
-    ("10.0.0.1",              "10.0.0.1"),
-    ("scanme.nmap.org",        "scanme.nmap.org"),
-    ("http://10.0.0.1/path",  "10.0.0.1"),
-    ("https://evil.com/../../", "evil.com"),
+    ("10.0.0.1",             "10.0.0.1"),
+    ("scanme.nmap.org",       "scanme.nmap.org"),
+    ("http://10.0.0.1/path", "10.0.0.1"),
+    ("https://x.com/../..",   "x.com"),
 ])
 def test_validate_target_accepts(raw, expected):
     target, _ = validate_target(raw)
@@ -114,15 +119,13 @@ def test_validate_target_rejects_bad_format():
         validate_target("not-a-host-!!")
 
 
-def test_validate_target_rejects_public_ip_without_warn():
+def test_validate_target_warns_on_public_ip():
     target, warnings = validate_target("8.8.8.8")
     assert target == "8.8.8.8"
     assert any("PUBLIC IP" in w for w in warnings)
 
 
 def test_validate_target_rejects_private_outside_allowlist():
-    """42.42.42.42 looks fine syntactically — special IPs should still fail."""
-    # 0.0.0.1 is a blocklisted special range but NOT in lab allowlist
     with pytest.raises(ValueError, match="private"):
         validate_target("0.0.0.1")
 

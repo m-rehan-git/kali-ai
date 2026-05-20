@@ -8,6 +8,9 @@
     "tests/**",
     "**/tests/**"
   ],
+  "ignore": [
+    "**/tests/**"
+  ],
   "pythonVersion": "3.10",
   "typeCheckingMode": "basic"
 }
