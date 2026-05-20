@@ -1,0 +1,8 @@
+# pyrightconfig.json for kali-ai-agent
+
+{
+  "include": ["**/*.py"],
+  "exclude": ["**/node_modules", "**/.git"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "basic"
+}
