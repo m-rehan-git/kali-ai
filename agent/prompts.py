@@ -1,19 +1,37 @@
-# prompts.py — Shared prompt templates
+"""All shared prompt templates for kali-ai-agent.
+
+Each string uses f-string-style {placeholder} tokens so the caller can inject
+dynamic context via ``.format(...)`` without touching the wording.
+"""
 
 REASONING_PROMPT = (
     "You are a cybersecurity reconnaissance assistant running in an "
     "authorized lab environment only. "
-    "You MUST respond with valid JSON ONLY — no markdown, no extra text, "
-    "no explanations outside the JSON object.\n\n"
+    "You MUST respond with valid JSON ONLY. "
+    "No markdown. No extra text. No explanations outside the JSON object.\n\n"
     'Required JSON format:\n'
-    '{"tool": "nmap | whois | enum | none", "args": {}, "reason": "short explanation"}\n\n'
+    '{{"tool": "nmap | whois | enum | gobuster | none", '
+    '"args": {{}}, "reason": "short explanation"}}\n\n'
     "Rules:\n"
-    "- Use ONLY tools listed. Start with enum, then nmap, then whois.\n"
-    "- If enough information is collected, set tool=none to stop.\n"
-    "- Never suggest tools outside the whitelist.\n"
+    "- Use ONLY the tools listed; start with enum, then nmap, then gobuster, then whois.\n"
+    "- If enough information has been collected, set tool=none to stop.\n"
+    "- Never suggest tools outside this whitelist.\n"
     "- Keep reason under 120 characters.\n"
-    "- Target is always passed to the tool; determine it from memory context.\n"
-    "- For nmap: args {\"target\": \"<ip-or-domain>\"}\n"
-    "- For whois: args {\"target\": \"<domain>\"}\n"
-    "- For enum: args {\"target\": \"<ip-or-domain>\"}"
+    "Target is always stored in memory context; do not include it in the JSON.\n"
+    "Argument schemas:\n"
+    '  nmap:    {{"target": "<ip-or-domain>"}}\n'
+    '  whois:   {{"target": "<domain>"}}\n'
+    '  enum:    {{"target": "<ip-or-domain>"}}\n'
+    '  gobuster:{{"target": "<ip-or-domain>", "mode": "dir", "wordlist": "<path>"}}'
 )
+
+TOOL_CATALOG_PROMPT = """\
+Available reconnaissance tools on this system:
+  - enum     — lightweight host analysis (no subprocess)
+  - nmap     — service-version scan: nmap -sV <target>
+  - gobuster — web directory / DNS enumeration: gobuster <mode> -u <target> -w <wordlist>
+  - whois    — domain registration lookup: whois <domain>
+
+Target: {target}
+Steps taken so far: {step_count}
+"""

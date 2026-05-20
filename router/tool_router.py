@@ -1,15 +1,23 @@
+"""router/tool_router.py
+
+Whitelist gate — the ONLY entry point for tool execution.
+No tool outside ALLOWED_TOOLS can ever be dispatched from here.
+"""
+
 import json
 from config import ALLOWED_TOOLS, is_safe_arg
 
 import tools.nmap_tool as nmap_tool
 import tools.whois_tool as whois_tool
 import tools.enum_tool as enum_tool
+import tools.gobuster_tool as gobuster_tool
 
 
 _TOOL_MAP = {
     "nmap": nmap_tool.run_nmap,
     "whois": whois_tool.run_whois,
     "enum": enum_tool.run_enum,
+    "gobuster": gobuster_tool.run_gobuster,
 }
 
 

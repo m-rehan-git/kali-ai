@@ -1,0 +1,6 @@
+# Development / test dependencies
+# Install with: pip install -r requirements-dev.txt
+
+pytest>=8.0.0
+pytest-asyncio>=0.21.0
+responses>=0.24.0   # for mocking HTTP calls to OpenAI/Ollama in tests
