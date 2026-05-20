@@ -25,7 +25,8 @@ SESSION_JSON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 ALLOWED_TOOLS = {"nmap", "whois", "enum", "gobuster"}
 
 # ── Injection safety ──
-DANGEROUS_CHARS = {";", "|", "&", "$", "`", "(", ")", "\n", "\r"}
+DANGEROUS_CHARS = {";", "|", "&", "$", "`", "(", ")", "\n", "\r",
+                   ">", "<", "'"}
 
 # ── Private / non-routable IP RFC blocks ──
 _PRIVATE_CIDRS = [

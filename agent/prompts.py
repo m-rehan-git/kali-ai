@@ -1,7 +1,20 @@
 """All shared prompt templates for kali-ai-agent.
 
-Each string uses f-string-style {placeholder} tokens so the caller can inject
-dynamic context via ``.format(...)`` without touching the wording.
+Each string uses f-string-style ``{placeholder}`` tokens so the caller can
+inject dynamic context via ``.format(...)`` without touching the wording.
+
+TOOL_CATALOG_PROMPT
+-------------------
+A human-readable summary of every available tool.  Pass it as a user
+message at the start of a fresh session when you want the LLM to have
+full context on what's available before it makes its first decision.
+
+    from agent.prompts import TOOL_CATALOG_PROMPT
+    catalog = TOOL_CATALOG_PROMPT.format(
+        target="10.0.0.10",
+        step_count=0,
+    )
+    memory.add("user", catalog)
 """
 
 REASONING_PROMPT = (

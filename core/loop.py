@@ -15,10 +15,9 @@ from config import (
     LLM_RETRIES, LLM_RETRY_BACKOFF_SEC,
     SESSION_JSON_DIR,
 )
-from agent.llm import get_next_step, SYSTEM_PROMPT
+from agent.llm import get_next_step
 from agent.memory import Memory
 from router.tool_router import route
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,7 +34,7 @@ log = logging.getLogger("kali-ai-agent")
 # ── Structured JSON session logging ──────────────────────────────────
 
 def _write_json_session(session_id: str, events: list[dict]) -> None:
-    """Append a structured JSON session record to logs/sessions/."""
+    """Write the session record as pretty-printed JSON (overwrite, not append)."""
     out_dir = Path(SESSION_JSON_DIR)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"session_{session_id}.json"
@@ -44,8 +43,8 @@ def _write_json_session(session_id: str, events: list[dict]) -> None:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events": events,
     }
-    with open(out_path, "a") as f:
-        f.write(json.dumps(record) + "\n")
+    with open(out_path, "w") as f:
+        json.dump(record, f, indent=2)
 
 
 # ── Retry helper ─────────────────────────────────────────────────────
@@ -86,7 +85,7 @@ def run(target: str, dry_run: bool = False) -> dict:
     Returns
     -------
     dict
-        Session summary: target, step_count, tools_run, dry_run flag.
+        Session summary: target, session_id, step_count, tools_run, dry_run flag.
     """
     session_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     step = 0
@@ -94,7 +93,6 @@ def run(target: str, dry_run: bool = False) -> dict:
     json_events: list[dict] = []
     tools_run: list[str] = []
 
-    ctx = {"warnings": []}
     log.info("=== New session | target=%s | dry_run=%s ===", target, dry_run)
     memory.add("user", f"TARGET={target}")
 
@@ -183,5 +181,4 @@ def run(target: str, dry_run: bool = False) -> dict:
         "steps": step,
         "tools_run": tools_run,
         "dry_run": dry_run,
-        "warnings": ctx["warnings"],
     }

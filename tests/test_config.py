@@ -1,14 +1,8 @@
 """tests/test_config.py — Unit tests for config.py security helpers."""
 
-import sys
-from pathlib import Path
-
-# Project root is two levels above this file (tests/ is at root/tests/)
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 import pytest
 
-from config import (      # noqa: E402
+from config import (
     is_safe_arg,
     _IPV4_RE,
     _DOMAIN_RE,
@@ -38,6 +32,13 @@ def test_is_safe_arg_clean(val, expected):
     "nc$(whoami)",
     "echo\nwhoami",
     "ping\r\nhost",
+    # Redirect / comparison operators
+    "target > out.txt",
+    "target < in.txt",
+    # Single-quote injection
+    "'; rm -rf / #",
+    # Angle-bracket redirection
+    "cat file | tee out",
 ])
 def test_is_safe_arg_rejects_injection(val):
     assert is_safe_arg(val) is False

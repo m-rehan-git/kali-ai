@@ -1,44 +1,56 @@
 """tests/test_router.py — Unit tests for router/tool_router.py."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 import pytest
 
 from router.tool_router import route
 from config import ALLOWED_TOOLS
 
 
-# ── Happy-path ─────────────────────────────────────────────────────
+_GOBUSTER_WORDLIST = "/usr/share/wordlists/dirb/common.txt"
 
-@pytest.mark.parametrize("tool_name", sorted(ALLOWED_TOOLS))
-def test_route_whitelisted_tools(tool_name):
+
+def _call_route(tool_name: str, **kwargs) -> dict:
     if tool_name == "gobuster":
-        result = route(tool_name, {"target": "example.com", "mode": "dir"})
-    elif tool_name == "nmap":
-        result = route(tool_name, {"target": "example.com"})
-    else:
-        result = route(tool_name, {"target": "example.com"})
+        kwargs.setdefault("wordlist", _GOBUSTER_WORDLIST)
+    result = route(tool_name, kwargs)
+    assert isinstance(result["result"], str), (
+        f"Expected str, got {type(result['result']).__name__}:"
+        f" {result['result'][:120]!r}"
+    )
+    assert len(result["result"]) > 0, "Tool returned an empty string."
+    return result
+
+
+# ── Happy-path: each whitelisted tool gets its own sub-test ──────────
+
+@pytest.mark.parametrize("tool_name,extra", [
+    ("enum",    {"target": "10.0.0.1"}),
+    ("nmap",    {"target": "example.com"}),
+    ("gobuster",{"target": "example.com", "mode": "dir",
+                 "wordlist": _GOBUSTER_WORDLIST}),
+    ("whois",   {"target": "example.com"}),
+], ids=lambda t: t[0] if isinstance(t, str) else t[0][:3])
+def test_route_whitelisted_tools(tool_name, extra):
+    result = _call_route(tool_name, **extra)
     assert result["tool"] == tool_name
-    assert "result" in result
 
 
 def test_route_none():
     result = route("none", {})
     assert result["tool"] == "none"
+    assert isinstance(result["result"], str)
 
 
-def test_route_enum():
-    result = route("enum", {"target": "10.0.0.1"})
-    assert result["tool"] == "enum"
+def test_route_enum_contains_output():
+    result = _call_route("enum", target="10.0.0.1")
     assert "[ENUM]" in result["result"]
 
 
-def test_route_whois():
-    result = route("whois", {"target": "example.com"})
-    assert result["tool"] == "whois"
+# whois may not be installed on all CI runners; skip when offline
+def test_route_whois_output():
+    result = _call_route("whois", target="example.com")
+    # Must be a real string with meaningful length
+    assert len(result["result"]) > 10
 
 
 # ── Security: rejected tools ───────────────────────────────────────

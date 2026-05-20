@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "kali-ai-agent"
+version = "2.1.0"
+description = "LLM-driven authorised-lab reconnaissance agent for Kali Linux."
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "openai>=1.30.0",
+    "requests>=2.28.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "responses>=0.24.0",
+]
+
+[project.scripts]
+kali-ai-agent = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent*", "core*", "router*", "tools*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.pyright]
+include = ["**/*.py"]
+exclude = ["**/node_modules", "**/.git", "tests/**"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
