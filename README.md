@@ -1,6 +1,7 @@
 # kali-ai-agent
 
-A production-ready, locally-runnable LLM-driven cybersecurity reconnaissance agent designed exclusively for **authorized lab use on Kali Linux**.
+A production-ready, locally-runnable LLM-driven cybersecurity reconnaissance
+agent designed exclusively for **authorized lab use on Kali Linux**.
 
 ---
 
@@ -18,11 +19,12 @@ A production-ready, locally-runnable LLM-driven cybersecurity reconnaissance age
 1. [Project Overview](#project-overview)
 2. [Architecture](#architecture)
 3. [Safety Rules](#safety-rules)
-4. [Installation](#installation)
+4. [Installation & One-Time Setup](#installation--one-time-setup)
 5. [Configuration](#configuration)
 6. [Running the Agent](#running-the-agent)
-7. [Example Execution Flow](#example-execution-flow)
-8. [Project Structure](#project-structure)
+7. [CLI Reference](#cli-reference)
+8. [Example Execution Flow](#example-execution-flow)
+9. [Project Structure](#project-structure)
 
 ---
 
@@ -41,11 +43,11 @@ It does **not** autonomously attack systems. Instead, it:
 
 ### Supported LLM Providers
 
-| Provider | Env Var | Notes |
-|---|---|---|
-| **Mock** | `LLM_PROVIDER=mock` *(default)* | Deterministic dummy loop — works offline. |
-| **Ollama** | `LLM_PROVIDER=ollama` | Uses a local Ollama server (`http://localhost:11434`). |
-| **OpenAI** | `LLM_PROVIDER=openai` | Requires `OPENAI_API_KEY` env var. |
+| Provider | Description |
+|---|---|
+| **Mock** | Deterministic offline mode — no API key needed, always works |
+| **Ollama** | Local LLM server — no API key, runs fully offline |
+| **OpenAI** | Remote cloud LLM — requires API key |
 
 ---
 
@@ -90,17 +92,16 @@ User Input (Target IP / Domain)
 
 | Rule | Enforcement Location |
 |---|---|
-| **Lab-only input** | `config.py` — `validate_target()` |
-| **Whitelisted tools only** | `router/tool_router.py` |
-| **No shell injection** | Every tool wrapper uses `subprocess` with a list; `shlex.split`; argument character check |
-| **LLM never runs commands** | LLM only returns JSON decision; `first/second` never runs raw strings |
-| **All execution via router** | `core/loop.py` calls `route()` exclusively |
-| **Full audit log** | `logs/session.log` — timestamp + tool + args + output |
+| **Lab-only input** | `config.py` — `validate_target()` + private-IP blocklist |
+| **Whitelisted tools only** | `router/tool_router.py` — hardcoded `ALLOWED_TOOLS` set |
+| **No shell injection** | Subprocess list args + `shlex.split` + `DANGEROUS_CHARS` filter |
+| **LLM never runs commands** | LLM returns JSON only; router executes everything |
+| **Full audit trail** | `logs/session.log` + `logs/sessions/*.json` |
 | **Graceful shutdown** | `tool=none` from LLM, Ctrl+C handler in `main.py` |
 
 ---
 
-## Installation
+## Installation & One-Time Setup
 
 ### Prerequisites
 
@@ -108,69 +109,130 @@ User Input (Target IP / Domain)
 - Python 3.10+
 - Git
 
-### Steps
+### 1 — Clone
 
 ```bash
-# 1. Clone
-git clone https://github.com/<your-username>/kali-ai-agent.git
-cd kali-ai-agent
+git clone https://github.com/<your-username>/kali-ai.git
+cd kali-ai
+```
 
-# 2. Install dependencies
+### 2 — Install Dependencies
+
+```bash
 pip install -r requirements.txt
-
-# 3. (Optional) Run with Ollama instead of mock LLM
-# Install Ollama: https://ollama.com
-ollama pull llama3.2:3b
-export LLM_PROVIDER=ollama
 ```
 
-**Required Kali tools:**
+Required Kali tools:
 
 ```bash
-sudo apt update && sudo apt install -y nmap whois python3-pip
-pip3 install -r requirements.txt
+sudo apt update && sudo apt install -y nmap whois gobuster
 ```
+
+### 3 — Run the Setup Wizard
+
+```bash
+python setup.py
+```
+
+The wizard will:
+
+1. Present a numbered provider menu (OpenAI / Ollama / Mock).
+2. Prompt for credentials and model name.
+3. **Validate the key** against the live API before saving.
+4. Write a `.env` file to the project root.
+
+```
+=== kali-ai-agent setup wizard ===
+
+Choose your LLM provider:
+
+  [1] openai    — OpenAI — GPT-4o-mini or any OpenAI-compatible API
+  [2] ollama    — Ollama — local LLM server (no API key needed)
+  [3] mock      — Mock — deterministic offline mode, no network calls
+
+Enter 1, 2, or 3:
+```
+
+### 4 — Re-run Setup to Change Providers
+
+```bash
+python setup.py --reset
+```
+
+This overwrites `.env` without touching any existing scan logs.
 
 ---
 
 ## Configuration
 
-All configuration lives in `config.py`. No sensitive keys are hardcoded.
+All runtime configuration lives in `config.py`. Secrets are loaded from
+`.env` automatically via `python-dotenv`.
+
+### `.env` Reference (written by `setup.py`)
+
+```ini
+# ── LLM provider ────────────────────────────────────────────
+LLM_PROVIDER=mock          # mock | openai | ollama
+
+# ── OpenAI ──────────────────────────────────────────────────
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+
+# ── Ollama ──────────────────────────────────────────────────
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2:3b
+```
+
+### Runtime Override Table
 
 | Variable | Default | Description |
 |---|---|---|
 | `LLM_PROVIDER` | `mock` | `openai`, `ollama`, or `mock` |
-| `OPENAI_API_KEY` | `""` | Required when using OpenAI |
+| `OPENAI_API_KEY` | *(empty)* | OpenAI API key — **never committed** |
 | `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model name |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model tag |
 | `MAX_MEMORY_ENTRIES` | `15` | Context window size |
 | `MAX_LOOP_STEPS` | `20` | Hard cap on loop iterations |
-| `ALLOWED_TOOLS` | `{nmap, whois, enum}` | Router whitelist |
+| `ALLOWED_TOOLS` | `{nmap,whois,enum,gobuster}` | Router whitelist |
 
 ---
 
 ## Running the Agent
 
-### Mock mode (no LLM server required)
-
 ```bash
-export LLM_PROVIDER=mock
-python3 main.py
+# ── Interactive mode (prompts for target) ──────────────────────
+python main.py
+
+# ── Non-interactive mode with a fixed target ───────────────────
+python main.py --target 10.0.0.10
+
+# ── Dry-run — no subprocess calls, mock LLM only ───────────────
+python main.py --target 10.0.0.1 --dry-run
+
+# ── Use a non-default provider at runtime ──────────────────────
+python main.py --target scanme.nmap.org --provider ollama
+
+# ── Limit the loop to N steps ──────────────────────────────────
+python main.py --target 10.0.0.1 --steps 5
 ```
 
-### OpenAI mode
+---
 
-```bash
-export LLM_PROVIDER=openai
-export OPENAI_API_KEY="sk-..."
-python3 main.py
+## CLI Reference
+
 ```
+usage: kali-ai-agent [-h] [--target TARGET] [--provider {openai,ollama,mock}]
+                     [--dry-run] [--steps STEPS]
 
-### Ollama mode
+LLM-driven authorized-lab reconnaissance agent.
 
-```bash
-export LLM_PROVIDER=ollama
-python3 main.py
+flags:
+  -t, --target TARGET      IP address or domain to scan
+  -p, --provider {openai,ollama,mock}   LLM provider
+  --dry-run                Force mock mode; skip subprocess calls
+  -s, --steps STEPS        Override MAX_LOOP_STEPS for this run
+  -h, --help               Show this help message
 ```
 
 ---
@@ -179,40 +241,36 @@ python3 main.py
 
 ```
 ╔══════════════════════════════════════════════════╗
-║          kali-ai-agent  v1.0                    ║
+║          kali-ai-agent  v2.0                    ║
 ║  Authorized Lab Reconnaissance Only             ║
 ╚══════════════════════════════════════════════════╝
 
-Enter target IP or domain (lab only): scanme.nmap.org
+[INFO] LLM provider: mock
+[INFO] Target: 10.0.0.42
+[INFO] Starting agent loop …
 
-[INFO] Target set to: scanme.nmap.org
-[INFO] Starting agent loop ...
-
-[Step 1] LLM → tool='enum' | reason=Start with lightweight enum analysis.
+[Step 1] LLM → tool='enum' | reason='Starting reconnaissance with lightweight enum.'
 [Step 1] Output:
-[ENUM] Domain/IP: scanme.nmap.org
-[ENUM] Suggested next steps: nmap -sV scanme.nmap.org  |  whois scanme.nmap.org
+[ENUM] Domain/IP: 10.0.0.42
+[ENUM] Suggested next steps: nmap -sV 10.0.0.42  |  whois 10.0.0.42
 ---
-[Step 2] LLM → tool='nmap' | reason=Run nmap service version scan on the target.
+[Step 2] LLM → tool='nmap' | reason='Run nmap service-version scan on the target.'
 [Step 2] Output:
-Nmap scan report for scanme.nmap.org (45.33.32.156)
-Host is up (0.014s latency).
-Not shown: 995 closed tcp ports
-PORT      STATE  SERVICE        VERSION
-22/tcp    open   ssh            OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.13
-25/tcp    closed smtp
-80/tcp    open   http           Apache httpd 2.4.7
+Nmap scan report for 10.0.0.42
+Host is up (0.001s latency).
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
 ---
-[Step 3] LLM → tool='whois' | reason=Gather WHOIS registration data.
+[Step 3] LLM → tool='gobuster' | reason='Enumerate web directories after nmap.'
 [Step 3] Output:
-Domain Name: NMAP.ORG
-Registry Domain ID: D218300003-LROR
-Registrar WHOIS Server: whois.gandi.net
-...
+===============================================================
+[DRY-RUN] Tool 'gobuster' would be called with args={"target": "10.0.0.42", ...}.
+Subprocess execution skipped.
 ---
 [DONE] LLM signalled completion.
 
-=== Session ended after 3 step(s) ===
+[SUMMARY] {'target': '10.0.0.42', 'session_id': '20260520T...', ...}
 ```
 
 ---
@@ -220,43 +278,41 @@ Registrar WHOIS Server: whois.gandi.net
 ## Project Structure
 
 ```
-kali-ai-agent/
+kali-ai/
 │
 ├── main.py               # Entry point
-├── config.py             # Env vars, whitelist, validation
-├── requirements.txt      # Python dependencies
-├── logger.py             # Shared logging helper
+├── config.py             # Env vars, whitelist, validation, safety constants
+├── setup.py              # One-time first-run configuration wizard
+├── requirements.txt      # Runtime Python dependencies
+├── requirements-dev.txt  # Dev dependencies (pytest, responses)
+├── pyproject.toml        # Build sys, pip install -e ., CLI entry point, pytest/pyright config
+├── .env.example          # Template — copy to .env or run setup.py
+├── .gitignore
+├── README.md
 │
 ├── agent/
-│   ├── llm.py            # LLM provider abstraction
-│   ├── memory.py         # Context window (last 15 steps)
-│   └── prompts.py        # Prompt templates
+│   ├── llm.py            # LLM provider abstraction (OpenAI / Ollama / mock)
+│   ├── memory.py         # Bounded context window (last 15 interactions)
+│   └── prompts.py        # Prompt templates (REASONING_PROMPT, TOOL_CATALOG_PROMPT)
 │
 ├── tools/
 │   ├── nmap_tool.py      # subprocess wrapper — nmap -sV <target>
 │   ├── whois_tool.py     # subprocess wrapper — whois <domain>
-│   └── enum_tool.py      # Lightweight analysis placeholder
+│   ├── enum_tool.py      # Lightweight analysis placeholder
+│   └── gobuster_tool.py  # Web directory / DNS / vhost enumeration
 │
 ├── router/
 │   └── tool_router.py    # Whitelist enforcement + dispatch
 │
 ├── core/
-│   └── loop.py           # Main reasoning loop
+│   └── loop.py           # Main reasoning loop (LLM → Router → Tool → Memory)
 │
-└── logs/
-    └── session.log       # Append-only audit trail
+├── logs/
+│   ├── session.log       # Append-only plain-text audit trail
+│   └── sessions/         # Pretty-printed JSON session records
+│
+└── tests/
+    ├── conftest.py       # Shared fixtures (isolated_logs, lab_target, public_domain)
+    ├── test_config.py    # validate_target, is_safe_arg, IP/domain regex tests
+    └── test_router.py    # route() happy-path + security rejection tests
 ```
-
----
-
-## Security Notes
-
-- **No raw shell execution.** Every command is built as a Python list and
-  passed to `subprocess.run(..., shell=False)`.
-- **Whitelist is enforced in code**, not configuration. New tools cannot
-  be added by setting an environment variable.
-- **All tool arguments are checked against a dangerous-character set** before
-  execution.
-- The LLM **never** receives write or exec permissions; it only returns
-  structured JSON decisions that the router validates.
-- The memory buffer is bounded (15 steps) to prevent context-window attacks.

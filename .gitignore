@@ -13,7 +13,6 @@ htmlcov/
 # Env / secrets
 .env
 .env.*
-!.env.example
 
 # OS / editor
 .DS_Store
@@ -31,18 +30,3 @@ gobuster-*.txt
 # Project-specific
 logs/*.log
 logs/sessions/*.json
-
-# OS / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/settings.json
-*.swp
-*.swo
-
-# Nmap / scan artefacts
-*.xml
-*.nmap
-
-# Project-specific
-logs/*.log

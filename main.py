@@ -12,21 +12,38 @@ CLI flags:
 """
 
 import argparse
+import os
 import sys
+
+from pathlib import Path
 
 from config import LOG_FILE, SESSION_JSON_DIR
 from config import validate_target, LLM_PROVIDER
 from agent.llm import get_next_step
 from core.loop import run
 
+_REPO_ROOT = Path(__file__).parent
+
 
 WELCOME = r"""
 ╔══════════════════════════════════════════════════╗
-║          kali-ai-agent  v2.0                    ║
+║          kali-ai-agent  v2.4                    ║
 ║  Authorized Lab Reconnaissance Only             ║
 ║  Ensure you have WRITTEN PERMISSION before use. ║
 ╚══════════════════════════════════════════════════╝
 """
+
+
+def _check_setup() -> None:
+    """Print a helpful hint if neither .env nor env vars are configured."""
+    env_configured = bool(
+        os.getenv("LLM_PROVIDER")
+        or os.getenv("OPENAI_API_KEY")
+        or os.getenv("OLLAMA_BASE_URL")
+    )
+    if not _REPO_ROOT.joinpath(".env").exists() and not env_configured:
+        print("[WARN] No .env found and no env vars set.")
+        print("[HINT] Run:  python setup.py")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -63,6 +80,8 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     print(WELCOME)
+
+    _check_setup()
 
     args = _parse_args()
 

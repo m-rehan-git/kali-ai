@@ -1,6 +1,10 @@
 import os
 import re
 
+from dotenv import load_dotenv  # type: ignore[import]
+
+load_dotenv()  # loads .env in the project root before os.getenv() calls below
+
 # ── LLM Provider ──
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")
 
