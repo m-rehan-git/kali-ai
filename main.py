@@ -39,6 +39,7 @@ def _check_setup() -> None:
     env_configured = bool(
         os.getenv("LLM_PROVIDER")
         or os.getenv("OPENAI_API_KEY")
+        or os.getenv("OPENROUTER_API_KEY")
         or os.getenv("OLLAMA_BASE_URL")
     )
     if not _REPO_ROOT.joinpath(".env").exists() and not env_configured:
@@ -58,7 +59,7 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--provider", "-p",
-        choices=["openai", "ollama", "mock"],
+        choices=["openai", "openrouter", "ollama", "mock"],
         default=None,
         help="LLM provider (overrides LLM_PROVIDER env var).",
     )

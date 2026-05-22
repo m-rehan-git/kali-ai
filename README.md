@@ -46,6 +46,7 @@ It does **not** autonomously attack systems. Instead, it:
 | Provider | Description |
 |---|---|
 | **Mock** | Deterministic offline mode — no API key needed, always works |
+| **OpenRouter** | 100+ models via one API key — free tier available |
 | **Ollama** | Local LLM server — no API key, runs fully offline |
 | **OpenAI** | Remote cloud LLM — requires API key |
 
@@ -148,11 +149,12 @@ The wizard will:
 
 Choose your LLM provider:
 
-  [1] openai    — OpenAI — GPT-4o-mini or any OpenAI-compatible API
-  [2] ollama    — Ollama — local LLM server (no API key needed)
-  [3] mock      — Mock — deterministic offline mode, no network calls
+  [1] openai      — OpenAI — GPT-4o-mini or any OpenAI-compatible API
+  [2] openrouter  — OpenRouter — 100+ models via one API key (free tier available)
+  [3] ollama      — Ollama — local LLM server (no API key needed)
+  [4] mock        — Mock — deterministic offline mode, no network calls
 
-Enter 1, 2, or 3:
+Enter 1, 2, 3, or 4:
 ```
 
 ### 4 — Re-run Setup to Change Providers
@@ -173,14 +175,21 @@ All runtime configuration lives in `config.py`. Secrets are loaded from
 ### `.env` Reference (written by `setup.py`)
 
 ```ini
-# ── LLM provider ────────────────────────────────────────────
-LLM_PROVIDER=mock          # mock | openai | ollama
+# ── LLM provider ────────────────────────────────────────────────
+LLM_PROVIDER=mock          # mock | openai | openrouter | ollama
 
-# ── OpenAI ──────────────────────────────────────────────────
+# ── OpenAI ─────────────────────────────────────────────────────
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
 
-# ── Ollama ──────────────────────────────────────────────────
+# ── OpenRouter ─────────────────────────────────────────────────
+# Get a key at https://openrouter.ai/keys
+# Free models: https://openrouter.ai/models?q=free
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=meta-llama/llama-3.1-8b-instruct:free
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# ── Ollama ─────────────────────────────────────────────────────
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2:3b
 ```
@@ -189,9 +198,11 @@ OLLAMA_MODEL=llama3.2:3b
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_PROVIDER` | `mock` | `openai`, `ollama`, or `mock` |
+| `LLM_PROVIDER` | `mock` | `openai`, `openrouter`, `ollama`, or `mock` |
 | `OPENAI_API_KEY` | *(empty)* | OpenAI API key — **never committed** |
 | `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model name |
+| `OPENROUTER_API_KEY` | *(empty)* | OpenRouter API key — **never committed** |
+| `OPENROUTER_MODEL` | `meta-llama/llama-3.1-8b-instruct:free` | OpenRouter model tag |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model tag |
 | `MAX_MEMORY_ENTRIES` | `15` | Context window size |
@@ -213,7 +224,8 @@ python main.py --target 10.0.0.10
 python main.py --target 10.0.0.1 --dry-run
 
 # ── Use a non-default provider at runtime ──────────────────────
-python main.py --target scanme.nmap.org --provider ollama
+python main.py --target scanme.nmap.org --provider openrouter
+python main.py --target 10.0.0.10 --provider ollama
 
 # ── Limit the loop to N steps ──────────────────────────────────
 python main.py --target 10.0.0.1 --steps 5
@@ -224,14 +236,15 @@ python main.py --target 10.0.0.1 --steps 5
 ## CLI Reference
 
 ```
-usage: kali-ai-agent [-h] [--target TARGET] [--provider {openai,ollama,mock}]
+usage: kali-ai-agent [-h] [--target TARGET] [--provider {openai,openrouter,ollama,mock}]
                      [--dry-run] [--steps STEPS]
 
 LLM-driven authorized-lab reconnaissance agent.
 
 flags:
-  -t, --target TARGET      IP address or domain to scan
-  -p, --provider {openai,ollama,mock}   LLM provider
+  -t, --target TARGET          IP address or domain to scan
+  -p, --provider {openai,openrouter,ollama,mock}
+                                LLM provider
   --dry-run                Force mock mode; skip subprocess calls
   -s, --steps STEPS        Override MAX_LOOP_STEPS for this run
   -h, --help               Show this help message

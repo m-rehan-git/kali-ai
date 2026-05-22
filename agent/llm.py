@@ -16,6 +16,9 @@ from config import (
     OLLAMA_BASE_URL,
     OLLAMA_MODEL,
     REQUEST_TIMEOUT,
+    OPENROUTER_API_KEY,
+    OPENROUTER_MODEL,
+    OPENROUTER_BASE_URL,
 )
 from agent.prompts import REASONING_PROMPT
 
@@ -80,6 +83,31 @@ def _call_ollama(messages: list[dict]) -> dict:
     )
     resp.raise_for_status()
     return _parse_json(resp.json()["message"]["content"])
+
+
+def _call_openrouter(messages: list[dict]) -> dict:
+    """Call OpenRouter's OpenAI-compatible API.
+
+    OpenRouter accepts the standard openai Python SDK pointed at their
+    base URL, plus two extra headers (HTTP-Referer and X-Title) that
+    they use for tracking and rate-limit tiering.
+    """
+    from openai import OpenAI  # type: ignore[import]
+
+    client = OpenAI(
+        api_key=OPENROUTER_API_KEY,
+        base_url=OPENROUTER_BASE_URL,
+    )
+    resp = client.chat.completions.create(
+        model=OPENROUTER_MODEL,
+        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+        timeout=REQUEST_TIMEOUT,
+        extra_headers={
+            "HTTP-Referer": "https://github.com/m-rehan-git/kali-ai",
+            "X-Title": "kali-ai-agent",
+        },
+    )
+    return _parse_json(resp.choices[0].message.content)
 
 
 _DEFAULT_WORDLIST = "/usr/share/wordlists/dirb/common.txt"
@@ -148,6 +176,8 @@ def _mock_call(messages: list[dict]) -> dict:
 def get_next_step(messages: list[dict]) -> dict:
     if LLM_PROVIDER == "openai":
         return _call_openai(messages)
+    if LLM_PROVIDER == "openrouter":
+        return _call_openrouter(messages)
     if LLM_PROVIDER == "ollama":
         return _call_ollama(messages)
     return _mock_call(messages)
