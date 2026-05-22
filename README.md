@@ -117,8 +117,10 @@ cd kali-ai
 ```
 
 ### 2 — Install Dependencies
-
+normal pip command won't work, you have to create a a virtual environment and always activate before running
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
