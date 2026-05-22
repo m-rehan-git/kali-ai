@@ -27,7 +27,7 @@ _REPO_ROOT = Path(__file__).parent
 
 WELCOME = r"""
 ╔══════════════════════════════════════════════════╗
-║          kali-ai-agent  v2.4                    ║
+║          kali-ai-agent  v2.5                    ║
 ║  Authorized Lab Reconnaissance Only             ║
 ║  Ensure you have WRITTEN PERMISSION before use. ║
 ╚══════════════════════════════════════════════════╝
