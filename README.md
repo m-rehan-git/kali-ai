@@ -124,7 +124,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
-you can face a log file error then your just have to make a log folder or run the following command
+you can face a log file error then, you just have to make a log folder or run the following command
 ```bash
 mkdir -p /home/kali/logs
 ```
